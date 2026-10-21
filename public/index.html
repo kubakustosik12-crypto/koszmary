@@ -4584,9 +4584,10 @@ var DANCERS=[
   {n:'Ciocia Cekin',face:{skin:'#efc3a2',hair:'#f0d080',lips:'#d01c3a',eye:'#2a5a8a',blush:.25,hairStyle:'long'},look:{female:1,armor:'koszulka',shirt:'#d01c3a',pants:'#d01c3a',skirt:'#d01c3a',shoes:'#1a1a1a',hair:'#f0d080',hairStyle3d:'afro',gloves:'#111111',height:.98,skin:'#efc3a2'}},
   {n:'Kuzyn Sztruks',face:{skin:'#e8b894',hair:'#8a5a2a',hairStyle:'fringe',eye:'#5a3a1a',lips:'#a05048'},look:{armor:'kurtka',jacket:'#7a5230',pants:'#6a4428',shoes:'#2a1a10',hair:'#8a5a2a',hairStyle3d:'bowl',suit:{lapel:'#5a3a20',shirt:'#e8902a',tie:'#5a3a20'},height:.95,skin:'#e8b894'}},
   {n:'Lord Rękawiczka',face:{skin:'#c89070',hair:'#0e0e10',eye:'#2a1a10',mustache:'#0e0e10',lips:'#8a4a40'},look:{armor:'kurtka',jacket:'#1e3a2a',pants:'#3a3a40',shoes:'#e8e8e8',coat:'#1e3a2a',hair:'#0e0e10',hairStyle3d:'pony',suit:{lapel:'#14281c',shirt:'#f4f4f4',vest:'#6a1a2a',tie:'#6a1a2a'},gloves:'#f4f4f4',height:1.08,build:.95,skin:'#c89070'}},
-  {n:'Dziadek Tango',face:{skin:'#e2b48e',hair:'#c8c8c8',mustache:'#d8d8d8',wrinkles:1,eye:'#4a4a5a',lips:'#a05a50'},look:{armor:'kurtka',jacket:'#efe9dc',pants:'#efe9dc',shoes:'#1a1a1a',hair:'#c8c8c8',suit:{lapel:'#d8d0c0',shirt:'#1a1a1a',pocket:'#c01818'},height:.98,skin:'#e2b48e'}}
+  {n:'Dziadek Tango',face:{skin:'#e2b48e',hair:'#c8c8c8',mustache:'#d8d8d8',wrinkles:1,eye:'#4a4a5a',lips:'#a05a50'},look:{armor:'kurtka',jacket:'#efe9dc',pants:'#efe9dc',shoes:'#1a1a1a',hair:'#c8c8c8',suit:{lapel:'#d8d0c0',shirt:'#1a1a1a',pocket:'#c01818'},height:.98,skin:'#e2b48e'}},
+  {n:'Ignaczak',char:'ignaczak'},{n:'Pracownik',char:'prac'},{n:'Luźny',char:'luz'}
 ];
-function makeDancer(i){ var D=DANCERS[i], o={}; for(var k in D.look) o[k]=D.look[k]; o.faceTex=paintFace(D.face); o.photo=true; return makeHumanoid(o); }
+function makeDancer(i){ var D=DANCERS[i], o={}; if(D.char){ var C=CHARS[D.char], L=C.look; return makeHumanoid({char:D.char,skin:C.skin,shirt:L.shirt,pants:L.pants,shoes:L.shoes,hair:L.hair,height:L.height||1,build:L.build||1,armor:C.kit.armor,faceKey:'happy'}); } for(var k in D.look) o[k]=D.look[k]; o.faceTex=paintFace(D.face); o.photo=true; return makeHumanoid(o); }
 // ---------- zone ----------
 THEME.ballroom={floor:'parquet',wall:'wallpaper',wallCol:'#b98ad6',wallH:3.8,sky:VOIDSKY,fog:['#140a24',30,95],hemi:['#ffe6ff','#3a2a4a',.62],sun:.36,mote:'#ff9af0'};
 PAL.ballroom={fl:'#a8743e',fl2:'#9a6a38',wall:'#7a4a9a',wall2:'#5a3a7a'};
@@ -4638,15 +4639,15 @@ function buildBallroom(z){ HALL.doors=HDOORS.map(function(d){ var c={}; for(var 
   var _eb=entBlock; entBlock=function(o,x,z,r){ var b=_eb(o,x,z,r); if(b) return b; if(o!==PL&&o!==PLR) return null; for(var i=0;i<ents.length;i++){ var e=ents[i]; if(e.kind!=='dancer'||!e.solid) continue; var dx=x-e.x, dz=z-e.z, rr=r+e.r; if(dx*dx+dz*dz<rr*rr) return e; } return null; };
 })();
 // ---------- show ----------
-function hallSpot(i){ var side=[180,90,270,0][i>>1], th=(side+(i%2?22:-22))*Math.PI/180, R=4.6; return {x:15+Math.sin(th)*R,z:15+Math.cos(th)*R}; }
+function hallSpot(i){ if(i>=8){ var th0=[180,90,270][i-8]*Math.PI/180; return {x:15+Math.sin(th0)*2.8,z:15+Math.cos(th0)*2.8}; } var side=[180,90,270,0][i>>1], th=(side+(i%2?22:-22))*Math.PI/180, R=4.6; return {x:15+Math.sin(th)*R,z:15+Math.cos(th)*R}; }
 function hallEnter(){ HALL.on=true; HALL.dancers=[]; HALL.cheer=0; HALL.doors.forEach(function(d){ d.open=d.side==='S'?1:0; d.target=d.side==='S'?1:0; });
   songPlay(0,true);
-  for(var i=0;i<8;i++){ var dI=i>>1, d=HDOORS[dI], side=i%2?1:-1, px=d.out[1]!==0?side*.62:0, pz=d.out[0]!==0?side*.62:0, sp=hallSpot(i);
+  for(var i=0;i<11;i++){ var star=i>=8, dI=star?i-8:i>>1, d=HDOORS[dI], side=star?0:(i%2?1:-1), px=d.out[1]!==0?side*.62:0, pz=d.out[0]!==0?side*.62:0, sp=hallSpot(i);
     var start={x:d.x+d.out[0]*3+px,z:d.z+d.out[1]*3+pz}, door={x:d.x-d.out[0]*.6+px,z:d.z-d.out[1]*.6+pz}, path=[start,door];
     if(d.side==='S') path.push({x:15+side*2.4,z:24.5});
     path.push(sp);
     var h=makeDancer(i); h.root.visible=false; zoneGroup.add(h.root);
-    HALL.dancers.push(ent('dancer',{h:h,x:start.x,z:start.z,r:.42,face:Math.atan2(-d.out[0],-d.out[1]),path:path,seg:0,enter:4+(i%2)*2+(dI===3?2:0),m:i%2,i:i,solid:false,cheer:0})); } }
+    HALL.dancers.push(ent('dancer',{h:h,x:start.x,z:start.z,r:.42,face:Math.atan2(-d.out[0],-d.out[1]),path:path,seg:0,enter:star?10+(i-8):4+(i%2)*2+(dI===3?2:0),m:i%2,i:i,solid:false,cheer:0})); } }
 function hallLeave(){ if(!HALL.on) return; HALL.on=false; songFade(700); rhyStop(true); if(PL.dance&&PL.dance.mode==='hall') danceEnd(); }
 function updateHall(dt){ if(!HALL.on||!Z||Z.id!=='taniec') return; var t=songTime(), b=(t-SONG_PH)/SONG_BEAT, ct=clipAtBeat(b), beatF=b-Math.floor(b);
   // doors: S closes after entry, all burst open on beat 4
