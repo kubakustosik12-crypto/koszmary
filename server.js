@@ -1,4 +1,4 @@
-// 5 Koszmarów Szymona Ignaczaka — serwer co-op (pokoje do 3 graczy)
+// 5 Koszmarów Szymona Ignaczaka — serwer co-op (pokoje do 10 graczy)
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -6,7 +6,7 @@ const zlib = require('zlib');
 const { WebSocketServer } = require('ws');
 
 const PORT = process.env.PORT || 3000;
-const MAX_PLAYERS = 3;
+const MAX_PLAYERS = 10;
 const INDEX = path.join(__dirname, 'public', 'index.html');
 
 let indexRaw = null, indexGz = null;
@@ -86,15 +86,17 @@ wss.on('connection', (ws) => {
       const room = rooms.get(code);
       if (!room) return send(ws, { t: 'err', msg: 'Nie ma pokoju ' + code });
       if (room.clients.size >= MAX_PLAYERS) return send(ws, { t: 'err', msg: 'Pokój pełny (max ' + MAX_PLAYERS + ')' });
+      const info = clean(m), nk = info.name.trim().toLowerCase();
+      for (const [cid, c] of room.clients) if (c !== ws && c.info && c.info.name.trim().toLowerCase() === nk) return send(ws, { t: 'err', code: 'nick', msg: 'Nick „' + info.name + '” jest już zajęty w tym pokoju. Zmień nick.' });
       leave(ws);
-      const id = room.nextId++; ws.room = room; ws.pid = id; ws.info = clean(m);
+      const id = room.nextId++; ws.room = room; ws.pid = id; ws.info = info;
       room.clients.set(id, ws);
       send(ws, { t: 'joined', room: code, you: id, host: room.host, peers: peersOf(room, id) });
       return broadcast(room, { t: 'peer+', p: { id, name: ws.info.name, char: ws.info.char, look: ws.info.look, eq: ws.info.eq, style: ws.info.style } }, id);
     }
     if (m.t === 'leave') { leave(ws); return send(ws, { t: 'left' }); }
     const room = ws.room; if (!room) return;
-    if (m.t === 'look') { ws.info = clean(Object.assign({}, ws.info, m)); }
+    if (m.t === 'look') { const nm = ws.info.name; ws.info = clean(Object.assign({}, ws.info, m)); ws.info.name = nm; m.name = nm; }
     m.from = ws.pid;
     const s = JSON.stringify(m);
     if (m.to) { const c = room.clients.get(m.to); if (c) send(c, s); }
