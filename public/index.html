@@ -4467,19 +4467,19 @@ function weaponTrail(h,on,dt){
 // • PvP tylko między graczami, którzy oboje je włączyli. Przychodzące pakiety są sprawdzane (anty-cheat).
 var NET={on:false,ws:null,id:0,leaderId:0,leader:false,host:false,guest:false,room:'',peers:{},stT:0,stG:0,fsT:0,url:'',name:'',
   zk:'',zmap:{},auth:0,ownFoes:true,gotFall:false,sname:'',vis:true,open:false,knock:null,knocks:[],rooms:[],tpT:-1e9,pvp:false};
-var NETV=2;
+var NETV=2, NETGV='24.2';
 var PLR=PL, FOESEQ=0;
 function netDefaultUrl(){ var l=location; if(l.protocol==='http:'||l.protocol==='https:'){ if(/claude|anthropic|usercontent/.test(l.host)) return ''; return (l.protocol==='https:'?'wss://':'ws://')+l.host+'/ws'; } return ''; }
 function netNorm(u){ u=(u||'').trim(); if(!u) return ''; if(!/^wss?:\/\//.test(u)) u=(u.indexOf('localhost')>=0||/^\d+\.\d+\.\d+\.\d+/.test(u)?'ws://':'wss://')+u.replace(/^https?:\/\//,''); if(!/\/ws$/.test(u)) u=u.replace(/\/+$/,'')+'/ws'; return u; }
 function netSend(m){ if(NET.ws&&NET.ws.readyState===1) NET.ws.send(JSON.stringify(m)); }
 function netActive(){ return NET.on&&Object.keys(NET.peers).length>0; }
 function netDid(){ if(NET.did) return NET.did; var d=''; try{ d=localStorage.getItem('ignaczak-did')||''; }catch(e){} if(!/^[a-z0-9]{6,24}$/.test(d)){ d=''; for(var i=0;i<14;i++) d+='abcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random()*36)]; try{ localStorage.setItem('ignaczak-did',d); }catch(e){} } NET.did=d; return d; }
-function netMyInfo(){ return {name:NET.name||charName(),char:G?G.char:CUR_CHAR,look:G?G.look:CHARS[CUR_CHAR].look,eq:G?eqSnapshot():{},style:G?G.style:'melee',lv:G?G.lv:1,v:NETV,did:netDid()}; }
+function netMyInfo(){ return {name:NET.name||charName(),char:G?G.char:CUR_CHAR,look:G?G.look:CHARS[CUR_CHAR].look,eq:G?eqSnapshot():{},style:G?G.style:'melee',lv:G?G.lv:1,v:NETV,gv:NETGV,did:netDid()}; }
 function eqSnapshot(){ var o={}; ['weapon','bow','wand','armor','hat','face','neck','back'].forEach(function(s){ o[s]=eqId(s); }); return o; }
 // ---------- mapy (strefy) ----------
 function zoneKeyOf(id,floor,run){ return id==='loch'?'loch:'+(run||0)+':'+(floor||1):String(id||''); }
 function myZk(){ return G?zoneKeyOf(G.zone,G.dun&&G.dun.floor,G.dun&&G.dun.run):''; }
-function zkName(zk){ if(!zk) return 'menu'; var p=String(zk).split(':'); if(p[0]==='loch') return 'Lochy, piętro '+(p[2]||1); var z=ZONES[p[0]]; return z?z.name:p[0]; }
+function zkName(zk){ if(!zk) return 'wchodzi do gry…'; var p=String(zk).split(':'); if(p[0]==='loch') return 'Lochy, piętro '+(p[2]||1); var z=ZONES[p[0]]; return z?z.name:p[0]; }
 function netZonePeers(){ var n=0; if(!NET.on||!NET.zk) return 0; for(var id in NET.peers) if(NET.peers[id].zk===NET.zk) n++; return n; }
 function netZoneHas(){ return netZonePeers()>0; }
 function netNeoIds(){ var ids=[]; for(var zk in NET.zmap){ var z0=zk.split(':')[0]; if(typeof NEOZ!=='undefined'&&NEOZ[z0]) ids=ids.concat(NET.zmap[zk].m); } return ids; }
@@ -4522,11 +4522,11 @@ function netOn(m){
   if(t==='knock'){ netKnockIn(m); return; }
   if(t==='knockx'){ netKnockDrop(m.rid); return; }
   if(t==='roomset'){ NET.vis=m.vis; NET.open=m.open; NET.sname=m.sname||NET.sname; updParty(); lobbyState(); return; }
-  if(t==='peer+'){ netAddPeer(m.p); toast('🌐 '+m.p.name+' dołącza ('+charName(m.p.char)+')'); netSend({t:'look',to:m.p.id,name:NET.name,char:G.char,look:G.look,eq:eqSnapshot(),style:G.style}); NET.stG=0; updParty(); lobbyState(); return; }
+  if(t==='peer+'){ netAddPeer(m.p); toast('🌐 '+m.p.name+' dołącza ('+charName(m.p.char)+')'); netSend({t:'look',to:m.p.id,name:NET.name,char:G.char,look:G.look,eq:eqSnapshot(),style:G.style,gv:NETGV}); NET.stG=0; updParty(); lobbyState(); return; }
   if(t==='peer-'){ var p=NET.peers[m.id]; if(p){ toast('🌐 '+p.name+' wychodzi'); netDelPeer(m.id); } updParty(); lobbyState(); return; }
   if(t==='host'){ NET.leaderId=m.id; var was=NET.leader; NET.leader=m.id===NET.id; if(NET.leader&&!was) toast('👑 Jesteś teraz liderem sesji.'); updParty(); lobbyState(); return; }
   var P=NET.peers[m.from];
-  if(t==='look'){ if(!P){ netAddPeer({id:m.from,name:m.name,char:m.char,look:m.look,eq:m.eq,style:m.style}); P=NET.peers[m.from]; } else { P.name=m.name||P.name; P.char=m.char||P.char; P.look=m.look||P.look; P.eq=m.eq||P.eq; P.style=m.style||P.style; P.dirty=1; } updParty(); return; }
+  if(t==='look'){ if(!P){ netAddPeer({id:m.from,name:m.name,char:m.char,look:m.look,eq:m.eq,style:m.style}); P=NET.peers[m.from]; } else { P.name=m.name||P.name; P.char=m.char||P.char; P.look=m.look||P.look; P.eq=m.eq||P.eq; P.style=m.style||P.style; P.dirty=1; } if(m.gv){ P.gv=String(m.gv).slice(0,12); netVerCheck(P); } updParty(); return; }
   if(t==='st'){ if(P) netStIn(P,m); return; }
   if(t==='chat'){ if(P) chatLine(P.name,m.msg,P); return; }
   if(t==='pvp'){ netPvpRecv(m,P); return; }
@@ -4557,7 +4557,7 @@ function netJoined(m){ NET.on=true; NET.id=m.you; NET.leaderId=m.host; NET.leade
   updParty(); lobbyState(); }
 // ---------- kto prowadzi moby na mojej mapie ----------
 function netZmap(z){ NET.zmap=z; netZmapPeers(); netAuthUpd(); updParty(); if($('lobby').classList.contains('show')) renderPlayers(); }
-function netZmapPeers(){ for(var id in NET.peers){ var P=NET.peers[id], nz=''; for(var zk in NET.zmap){ if(NET.zmap[zk].m.indexOf(+id)>=0){ nz=zk; break; } } if(P.zk!==nz){ P.zk=nz; P.x=null; } } }
+function netZmapPeers(){ for(var id in NET.peers){ var P=NET.peers[id], nz=''; for(var zk in NET.zmap){ if(NET.zmap[zk].m.indexOf(+id)>=0){ nz=zk; break; } } if(!nz&&P.stZk&&performance.now()-(P.stT||0)<3000) nz=P.stZk; if(P.zk!==nz){ P.zk=nz; P.x=null; } } }
 function netAuthUpd(){ if(!NET.on||!NET.zk) return; var e=NET.zmap[NET.zk]; if(!e||e.m.indexOf(NET.id)<0) return;
   var a=e.a, prev=NET.auth; NET.auth=a; NET.host=a===NET.id; NET.guest=!NET.host;
   if(NET.host){ if(!NET.ownFoes) netTakeOver(); }
@@ -4567,14 +4567,19 @@ function netTakeOver(){ NET.ownFoes=true; var any=false; ents.forEach(function(e
   if(!any&&!NET.gotFall){ var tx=Math.floor(PL.x/S), ty=Math.floor(PL.z/S); setTimeout(function(){ if(NET.host&&G&&Z&&mode!=='title') loadZone(G.zone,tx,ty); },30); } }
 function netDropOwnFoes(){ for(var i=ents.length-1;i>=0;i--){ var e=ents[i]; if(e.kind!=='foe') continue; if(e.g&&e.g.parent) e.g.parent.remove(e.g); if(e.h&&e.h.root&&e.h.root.parent) e.h.root.parent.remove(e.h.root); if(e.bar) e.bar.visible=false; e.dead=true; e.deadT=1; e.state='dead'; ents.splice(i,1); } if(BOSS){ BOSS=null; hideBossBar(); } try{ clearTele(); }catch(x){} }
 // ---------- gracze ----------
-function netAddPeer(p){ if(!p||p.id===NET.id) return; NET.peers[p.id]={id:p.id,name:p.name||'Gracz',char:p.char||'ignaczak',look:p.look||{},eq:p.eq||{},style:p.style||'melee',lv:p.lv||0,zk:p.zk||'',dirty:1,a:{},hp:1,mh:1}; }
+function netAddPeer(p){ if(!p||p.id===NET.id) return; NET.peers[p.id]={id:p.id,name:p.name||'Gracz',char:p.char||'ignaczak',look:p.look||{},eq:p.eq||{},style:p.style||'melee',lv:p.lv||0,gv:p.gv||'',zk:p.zk||'',dirty:1,a:{},hp:1,mh:1}; netVerCheck(NET.peers[p.id]); }
+// różne wersje gry w jednej sesji = gracze się nie widzą. Ostrzeż od razu i powiedz, co zrobić.
+function netVerCheck(P){ if(!P||!P.gv||P.gv===NETGV||P.verWarned) return; P.verWarned=1; var msg=P.name+' ma inną wersję gry ('+P.gv+', Ty: '+NETGV+'). Oboje odświeżcie stronę: Ctrl+F5 (telefon: zamknij i otwórz kartę).';
+  setTimeout(function(){ try{ chatLine('⚠️',msg); banner('⚠️ Inna wersja gry',msg,6500); }catch(e){} },400); }
 function netDelPeer(id){ var p=NET.peers[id]; if(p&&p.h){ scene.remove(p.h.root); } delete NET.peers[id]; delete PROX[id]; }
 function netClearPeers(){ for(var id in NET.peers) netDelPeer(id); }
 function peerModel(P){ if(P.h) scene.remove(P.h.root); var L=P.look||{}, E=P.eq||{};
   P.h=makeHumanoid({char:P.char,skin:(CHARS[P.char]||{}).skin,shirt:L.shirt,pants:L.pants,shoes:L.shoes,hair:L.hair,height:L.height||1,build:L.build||1,armor:E.armor,weapon:E.weapon,bow:E.bow,wand:E.wand,style:P.style,hat:E.hat,faceItem:E.face,neck:E.neck,back:E.back,faceKey:'neutral'});
   var tag=nameTag((P.ac?'🤡 ':'')+(P.pvp?'⚔ ':'')+P.name,P.pvp?'pvp':P.ac?'ac':P.char); tag.position.y=2.45/(P.h.baseScale||1); P.h.root.add(tag); P.tag=tag; var bar=makeBar(1); bar.position.y=2.25/(P.h.baseScale||1); P.h.root.add(bar); P.bar=bar; P.h.root.userData.peer=P.id; scene.add(P.h.root); P.dirty=0; }
 function nameTag(name,ch){ var t=canvasTex(256,48,function(c){ c.font='bold 28px monospace'; c.textAlign='center'; c.textBaseline='middle'; c.lineWidth=7; c.strokeStyle='#000'; c.strokeText(name,128,25); c.fillStyle=ch==='pvp'?'#ff4a4a':ch==='ac'?'#ff9a1a':ch==='prac'?'#7fe3ff':ch==='luz'?'#c8a8ff':'#ffe14d'; c.fillText(name,128,25); }); var s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,depthTest:false,transparent:true})); s.scale.set(1.6,.3,1); s.renderOrder=12; return s; }
-function netStIn(P,m){ P.gx=+m.x; P.gz=+m.zz; P.lv=m.lv; P.hp=m.hp; P.mh=m.mh; var ac=!!m.ac; if(ac!==!!P.ac){ P.ac=ac; P.dirty=1; }
+function netInZmap(id){ for(var zq in NET.zmap){ if(NET.zmap[zq].m.indexOf(+id)>=0) return true; } return false; }
+// mapa gracza: z listy serwera, a gdy serwer go nie ma (zgubione zgłoszenie mapy) — z jego pozycji
+function netStIn(P,m){ if(typeof m.z==='string'&&m.z){ P.stZk=m.z; P.stT=performance.now(); if(P.zk!==m.z&&(!P.zk||!netInZmap(P.id))){ P.zk=m.z; P.x=null; } } P.gx=+m.x; P.gz=+m.zz; P.lv=m.lv; P.hp=m.hp; P.mh=m.mh; var ac=!!m.ac; if(ac!==!!P.ac){ P.ac=ac; P.dirty=1; }
   if(!!m.pv!==!!P.pvp){ P.pvp=!!m.pv; P.dirty=1; if(P.pvp&&P.zk===NET.zk) toast('⚔️ '+P.name+' włącza PvP'); }
   if(m.z!==P.zk) return; P.tx=m.x; P.tz=m.zz; P.ty=m.y; P.tf=m.f; if(m.a&&(m.zs||m.a.w!=null)) P.a=m.a; P.iframe=m.if; P.block=m.bl; P.dead=m.dd; if(P.x==null){ P.x=m.x; P.z=m.zz; P.y=m.y; P.f=m.f; } P.last=performance.now(); }
 function updPeers(dt){ for(var id in NET.peers){ var P=NET.peers[id]; if(P.dirty) peerModel(P); if(!P.h) continue; var vis=!!P.zk&&P.zk===NET.zk&&P.x!=null&&mode!=='title'; P.h.root.visible=vis; if(!vis) continue;
@@ -4587,7 +4592,7 @@ function updPeers(dt){ for(var id in NET.peers){ var P=NET.peers[id]; if(P.dirty
     netSend({t:'st',zs:glob?0:1,z:NET.zk,x:+PL.x.toFixed(2),zz:+PL.z.toFixed(2),y:+(PL.y||0).toFixed(2),f:+(h?h.root.rotation.y:PL.face).toFixed(2),a:zp?(NET.lastA||{}):{},hp:Math.round(G.hp),mh:maxHP(),lv:G.lv,if:PL.iframe>0?1:0,bl:PL.blocking?1:0,dd:PL.deadT>=0?1:0,pv:NET.pvp?1:0,ac:(typeof acMarked==='function'&&acMarked())?1:0}); } }
 function netAnimCapture(a){ if(!NET.on) return; var o={w:+(a.walk||0).toFixed(2)}; function q(k,v){ if(v!=null&&v>=0) o[k]=+v.toFixed(2); }
   q('at',a.atk); q('hv',a.heavy); q('ca',a.cast); q('dr',a.drink); q('ro',a.roll); q('dw',a.draw); q('sh',a.shot); q('zp',a.zap); if(a.castK) o.ck=a.castK; if(a.charge) o.cg=+a.charge.toFixed(2); if(a.combo) o.cb=a.combo; if(a.block) o.bl=1; if(a.air) o.ai=1; if(a.dead) o.de=+a.dead.toFixed(2); if(a.lean) o.ln=+a.lean.toFixed(2); if(a.cry) o.cr=+a.cry.toFixed(2); if(a.fart) o.fa=+a.fart.toFixed(2); if(a.dance&&a.dance.w>0) o.dc=[+a.dance.t.toFixed(2),+a.dance.w.toFixed(2),a.dance.m?1:0]; NET.lastA=o; }
-function netSendLook(){ if(!NET.on||!G) return; netSend({t:'look',name:NET.name||charName(),char:G.char,look:G.look,eq:eqSnapshot(),style:G.style}); }
+function netSendLook(){ if(!NET.on||!G) return; netSend({t:'look',name:NET.name||charName(),char:G.char,look:G.look,eq:eqSnapshot(),style:G.style,gv:NETGV}); }
 // ---------- inni gracze jako cele dla mobów (tylko na mapie, którą prowadzę) ----------
 var PROX={};
 function proxiesInZone(){ var out=[]; if(!NET.host||!G) return out; for(var id in NET.peers){ var P=NET.peers[id]; if(P.zk!==NET.zk||P.x==null||P.dead||performance.now()-(P.last||0)>4000) continue; var p=PROX[id]||(PROX[id]={rid:+id,st:{},cds:{},drinks:[],kvx:0,kvz:0,r:.38,kind:'player'}); p.x=P.x; p.z=P.z; p.y=P.y||0; p.face=P.f||0; p.iframe=P.iframe?1:0; p.blocking=!!P.block; p.deadT=-1; p.walk=(P.a&&P.a.w)||0; out.push(p); } return out; }
@@ -4660,7 +4665,10 @@ function netTeleport(P){ var p=String(P.zk).split(':'), id=p[0]; if(id!=='loch'&
   fade(function(){ if(id==='loch'){ var run=+p[1]||0, fl=+p[2]||1; if(run!==G.dun.run){ for(var k in G.opened) if(k.indexOf('dun_')===0||k.indexOf('walizka_')===0) delete G.opened[k]; } G.dun.run=run; G.dun.floor=fl; G.dun.best=Math.max(G.dun.best||0,fl); }
     loadZone(id,tx,ty); PL.iframe=2; toast('🌐 Jesteś przy: '+P.name); }); }
 // ---------- per klatka ----------
-function netUpdate(dt){ if(!G) return; updPeers(dt); partyTick(dt); netSnapSend(dt); }
+function netUpdate(dt){ if(!G) return; netZoneHeal(dt); updPeers(dt); partyTick(dt); netSnapSend(dt); }
+function netZoneHeal(dt){ NET.healT=(NET.healT||0)-dt; if(NET.healT>0||!NET.on||!NET.ws||mode==='title'||!Z) return; NET.healT=2; var zk=myZk(); if(!zk) return;
+  var e=NET.zmap&&NET.zmap[zk], inMap=!!e&&e.m.indexOf(NET.id)>=0; if(NET.zk===zk&&inMap) return;
+  if(NET.zk!==zk){ NET.zk=zk; NET.gotFall=false; } netSend({t:'zin',z:zk}); NET.stT=0; NET.stG=0; if(NET.healN=(NET.healN||0)+1, NET.healN<4) try{ console.warn('[net] ponowne zgłoszenie mapy',zk); }catch(x){} }
 function netPrepFoes(){ NET.px=NET.host&&netZoneHas()?proxiesInZone():null; }
 // ---------- haki w kodzie gry ----------
 (function(){
@@ -4684,9 +4692,10 @@ function netPrepFoes(){ NET.px=NET.host&&netZoneHas()?proxiesInZone():null; }
       if(others.length&&e.a!==NET.id){ NET.auth=others.indexOf(e.a)>=0?e.a:others[0]; NET.host=false; NET.guest=true; NET.ownFoes=false; }
       else { NET.auth=NET.id; NET.host=true; NET.guest=false; NET.ownFoes=true; }
       NET.gotFall=false; }
-    NET.loading=1; try{ _lz(id,tx,ty); } finally { NET.loading=0; }
+    if(NET.on) netSend({t:'zin',z:NET.zk});
+    NET.loading=1; try{ _lz(id,tx,ty); } finally { NET.loading=0;
     if(BOSS&&BOSS.ghost) BOSS=null;
-    if(NET.on){ netSend({t:'zin',z:NET.zk}); NET.stT=0; NET.stG=0; if(NET.guest) netSend({t:'sync',to:NET.auth,z:NET.zk}); else if(netZoneHas()) netSendAll(); } };
+    if(NET.on){ netSend({t:'zin',z:NET.zk}); NET.stT=0; NET.stG=0; if(NET.guest) netSend({t:'sync',to:NET.auth,z:NET.zk}); else if(netZoneHas()) netSendAll(); } } };
   var _pha=playerHitArc; playerHitArc=function(range,arcDeg,pow,kb,opts){ var n=_pha(range,arcDeg,pow,kb,opts); if(NET.pvp&&NET.on&&PL===PLR) n+=netPvpArc(range,arcDeg,pow,kb,opts||{}); return n; };
   var _sd=showDeath; showDeath=function(){ _sd(); if(PL.pvpDeath){ $('death')._lost=0; $('deathP').textContent='Przegrałeś pojedynek PvP. Nic nie tracisz — wstajesz w tym samym miejscu.'; } };
   $('deathOk').addEventListener('click',function(e){ if(!PL.pvpDeath) return; e.stopImmediatePropagation(); $('death').classList.remove('show'); PL.pvpDeath=0; G.hp=maxHP(); PL.deadT=-1; PL.st={}; mode='play'; rebuildPlayer(); PL.iframe=3; hud(); },true);
@@ -5204,7 +5213,7 @@ ACH.push({id:'a_bajtek',em:'🌿',n:'Buch z Bajtkiem',d:'Zapal z Bajtkiem za mon
  }catch(e){} }; })();
 (function(){ var _ze=zoneExtras; zoneExtras=function(Zn){ _ze(Zn); if(Zn.id==='rynek'&&!G.flags.metBaj) setTimeout(function(){ if(Z&&Z.id==='rynek') banner('🌿 Czuć zielsko…','Ktoś pali w przejściu za MONOPOLOWYM (wąska uliczka na prawo od sklepu).',5200); },1400); }; })();
 function bajSmokeColumn(dt){ var e=BAJ.e; if(!e||Math.random()>dt*3.2) return; glowN(e.x+(Math.random()-.5)*.6,3.2+Math.random()*.6,e.z+(Math.random()-.5)*.6,'#b4b9bc',.9,4.2,(Math.random()-.5)*.3,1.5+Math.random()*.6,(Math.random()-.5)*.3,-.05,2.6); }
-(function(){ var t=document.getElementById('tDesc'); if(t&&t.parentNode){ var v=document.createElement('p'); v.className='dim'; v.style.cssText='margin:2px 0 0;font-size:11px;opacity:.75'; v.textContent='Wersja 24 • jedno miasto Koło, auta i rowery, rozwałka na klocki, ragdoll'; t.parentNode.insertBefore(v,t.nextSibling); } })();
+(function(){ var t=document.getElementById('tDesc'); if(t&&t.parentNode){ var v=document.createElement('p'); v.className='dim'; v.style.cssText='margin:2px 0 0;font-size:11px;opacity:.75'; v.textContent='Wersja 24.2 • jedno miasto Koło, auta i rowery, rozwałka na klocki, ragdoll'; t.parentNode.insertBefore(v,t.nextSibling); } })();
 
 // ---------- camera: never inside a house when the player is behind it ----------
 var CAMFIX={p:null,d:null};
